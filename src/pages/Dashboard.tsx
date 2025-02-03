@@ -63,9 +63,23 @@ const Dashboard = () => {
 
   const handleEnroll = async (courseId: string) => {
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.user) {
+        toast({
+          title: "Error",
+          description: "You must be logged in to enroll in a course",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const { error } = await supabase
         .from("enrollments")
-        .insert([{ course_id: courseId }]);
+        .insert({
+          course_id: courseId,
+          user_id: session.user.id,
+        });
 
       if (error) throw error;
 

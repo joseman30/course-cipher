@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 interface Course {
   id: string;
   title: string;
-  description: string;
+  description: string | null;
   vimeo_url: string;
 }
 
@@ -22,8 +22,18 @@ const Course = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    fetchCourse();
+    checkUser();
+    if (id) {
+      fetchCourse();
+    }
   }, [id]);
+
+  const checkUser = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      navigate("/auth");
+    }
+  };
 
   const fetchCourse = async () => {
     try {
@@ -35,15 +45,23 @@ const Course = () => {
 
       if (courseError) throw courseError;
 
+      if (!courseData) {
+        toast({
+          title: "Error",
+          description: "Course not found",
+          variant: "destructive",
+        });
+        navigate("/dashboard");
+        return;
+      }
+
       const { data: enrollmentData, error: enrollmentError } = await supabase
         .from("enrollments")
         .select("progress")
         .eq("course_id", id)
-        .single();
+        .maybeSingle();
 
-      if (enrollmentError && enrollmentError.code !== "PGRST116") {
-        throw enrollmentError;
-      }
+      if (enrollmentError) throw enrollmentError;
 
       setCourse(courseData);
       setProgress(enrollmentData?.progress || 0);
@@ -61,13 +79,30 @@ const Course = () => {
 
   const updateProgress = async (newProgress: number) => {
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.user) {
+        toast({
+          title: "Error",
+          description: "You must be logged in to update progress",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const { error } = await supabase
         .from("enrollments")
         .update({ progress: newProgress })
-        .eq("course_id", id);
+        .eq("course_id", id)
+        .eq("user_id", session.user.id);
 
       if (error) throw error;
+      
       setProgress(newProgress);
+      toast({
+        title: "Success",
+        description: "Progress updated successfully",
+      });
     } catch (error: any) {
       toast({
         title: "Error",

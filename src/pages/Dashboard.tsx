@@ -27,8 +27,8 @@ const Dashboard = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    fetchData();
     checkUser();
+    fetchData();
   }, []);
 
   const checkUser = async () => {
@@ -40,16 +40,17 @@ const Dashboard = () => {
 
   const fetchData = async () => {
     try {
+      // Fetch all courses and enrollments
       const [coursesResponse, enrollmentsResponse] = await Promise.all([
         supabase.from("courses").select("*"),
-        supabase.from("enrollments").select("*"),
+        supabase.from("enrollments").select("*")
       ]);
 
       if (coursesResponse.error) throw coursesResponse.error;
       if (enrollmentsResponse.error) throw enrollmentsResponse.error;
 
-      setCourses(coursesResponse.data);
-      setEnrollments(enrollmentsResponse.data);
+      setCourses(coursesResponse.data || []);
+      setEnrollments(enrollmentsResponse.data || []);
     } catch (error: any) {
       toast({
         title: "Error",
